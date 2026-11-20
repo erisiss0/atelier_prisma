@@ -53,7 +53,7 @@
 
       /* Authentic TCG Core Variables */
       --card-aspect: 0.718;
-      --card-radius: 4.55% / 3.5%;
+      --card-radius: 16px;
       --card-glow: var(--ambient-glow);
 
       --sunpillar-1: hsl(2, 100%, 73%);
@@ -422,12 +422,12 @@
       .site-header__inner { padding: 1.1rem clamp(1.25rem, 3vw, 2.75rem); }
     }
 
-    /* Exhibition grid */
+    /* Exhibition grid — gallery eye-line alignment for mixed portrait/square/landscape works */
     .exhibition-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
-      gap: 3.5rem 2.5rem;
-      align-items: start;
+      grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+      gap: 3.25rem 2.5rem;
+      align-items: stretch;
     }
     [hidden] { display: none !important; }
 
@@ -516,6 +516,10 @@
       --mark-len: 14px;
       --mark-w: 1px;
       position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 1.5rem;
       background:
         linear-gradient(var(--mark), var(--mark)) left top / var(--mark-len) var(--mark-w) no-repeat,
@@ -1090,6 +1094,8 @@
     }
 
     .holo-card__translater {
+      position: absolute;
+      inset: 0;
       display: grid;
       width: 100%;
       height: 100%;
@@ -1191,8 +1197,11 @@
 
     .holo-card__art-wrap {
       grid-area: 1 / 1;
+      position: relative;
       width: 100%;
       height: 100%;
+      min-width: 0;
+      min-height: 0;
       overflow: hidden;
       display: flex;
       align-items: center;
@@ -1201,6 +1210,8 @@
     }
 
     .holo-card__img {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -1212,6 +1223,8 @@
 
     #sarOverlayCanvas {
       grid-area: 1 / 1;
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       border-radius: var(--card-radius);
@@ -1367,7 +1380,7 @@
     .slab-shell {
       position: relative;
       z-index: 8;
-      width: min(360px, 76vw, calc(66dvh * var(--card-aspect)));
+      width: min(760px, 82vw, calc(68dvh * var(--card-aspect)));
     }
 
     /* ============================================================
@@ -2384,11 +2397,12 @@
           <div class="field">
             <span class="field__label">卡片比例</span>
             <div id="ratioGroup" class="chips chips--wrap">
-              <button type="button" data-ratio="0.718" aria-pressed="true" class="atelier-pill">標準 0.718</button>
-              <button type="button" data-ratio="auto" aria-pressed="false" class="atelier-pill">自動原圖</button>
+              <button type="button" data-ratio="auto" aria-pressed="true" class="atelier-pill">自動原圖</button>
+              <button type="button" data-ratio="0.718" aria-pressed="false" class="atelier-pill">標準 0.718</button>
               <button type="button" data-ratio="0.6667" aria-pressed="false" class="atelier-pill">海報 2:3</button>
               <button type="button" data-ratio="1" aria-pressed="false" class="atelier-pill">方形 1:1</button>
               <button type="button" data-ratio="1.5" aria-pressed="false" class="atelier-pill">橫幅 3:2</button>
+              <button type="button" data-ratio="1.7778" aria-pressed="false" class="atelier-pill">寬屏 16:9</button>
             </div>
           </div>
 
@@ -2482,7 +2496,7 @@
         foilIntensity: 0.85,
         glareIntensity: 0.65,
         tiltScale: 1,
-        aspectMode: "0.718",
+        aspectMode: "auto",
         fit: "cover",
         frame: "none",
         glowMode: "auto",
@@ -2791,7 +2805,27 @@
       const embossBuf = document.createElement("canvas");
       embossBuf.width = opticalData.w; embossBuf.height = opticalData.h;
       const embossCtx = embossBuf.getContext("2d");
-      const embossImgData = embossCtx.createImageData(opticalData.w, opticalData.h);
+      let embossImgData = embossCtx.createImageData(opticalData.w, opticalData.h);
+
+      function syncOpticalResolution(ratio) {
+        const safeRatio = clamp(parseFloat(ratio) || 0.718, 0.45, 2.2);
+        const baseArea = 160 * 224;
+        const w = Math.max(96, Math.min(240, Math.round(Math.sqrt(baseArea * safeRatio))));
+        const h = Math.max(96, Math.min(240, Math.round(w / safeRatio)));
+        if (opticalData.w !== w || opticalData.h !== h) {
+          opticalData.w = w;
+          opticalData.h = h;
+          embossBuf.width = w;
+          embossBuf.height = h;
+          embossImgData = embossCtx.createImageData(w, h);
+        }
+        const cw = Math.max(180, Math.min(360, Math.round(260 * Math.sqrt(safeRatio))));
+        const ch = Math.max(160, Math.min(360, Math.round(cw / safeRatio)));
+        if (sarCanvas.width !== cw || sarCanvas.height !== ch) {
+          sarCanvas.width = cw;
+          sarCanvas.height = ch;
+        }
+      }
 
       function getActiveMetalRgb() {
         if (state.metalMode === "auto") return opticalData.autoMetalRgb;
@@ -3381,9 +3415,10 @@
         mainCard.classList.toggle("orbiting", state.orbiting);
 
         const ratio = state.aspectMode === "auto"
-          ? clamp(imgObj.ratio || 0.718, 0.45, 2.0).toFixed(4)
+          ? clamp(imgObj.ratio || 0.718, 0.45, 2.2).toFixed(4)
           : state.aspectMode;
-        root.style.setProperty("--card-aspect", ratio);
+        darkroomDialog.style.setProperty("--card-aspect", ratio);
+        syncOpticalResolution(ratio);
         root.style.setProperty("--foil-intensity", String(state.foilIntensity));
         root.style.setProperty("--glare-intensity", String(state.glareIntensity));
 
@@ -3441,9 +3476,12 @@
       /* ============================================================
          9. EXHIBITION HALL CARD RENDERER (WORKS & 15 FINISHES)
          ============================================================ */
-      function buildGalleryCardNode(imgSrc, altText, effectId, glowCss, onOpen) {
+      function buildGalleryCardNode(imgSrc, altText, effectId, glowCss, onOpen, cardRatio) {
         const card = document.createElement("div");
         card.className = "holo-card";
+        if (cardRatio) {
+          card.style.setProperty("--card-aspect", clamp(cardRatio, 0.62, 1.85).toFixed(4));
+        }
         card.dataset.effect = effectId;
         card.dataset.fit = state.fit;
         card.dataset.frame = "none";
@@ -3542,7 +3580,8 @@
             item.name,
             eff.id,
             eff.glow === "auto" ? "hsl(196, 90%, 58%)" : eff.glow,
-            () => openDarkroom(item.id, eff.id, "works")
+            () => openDarkroom(item.id, eff.id, "works"),
+            item.ratio
           );
           spot.append(cardNode);
 
@@ -3673,7 +3712,8 @@
             `${imgObj.name} - ${eff.name}`,
             eff.id,
             eff.glow === "auto" ? opticalData.dominantCss : eff.glow,
-            () => openDarkroom(imgObj.id, eff.id, "effects")
+            () => openDarkroom(imgObj.id, eff.id, "effects"),
+            imgObj.ratio
           );
           spot.append(cardNode);
 
@@ -3808,7 +3848,7 @@
         const eff = getActiveEffectObj();
         const img = new Image();
         img.onload = () => {
-          const ratio = state.aspectMode === "auto" ? clamp(imgObj.ratio || 0.718, 0.45, 2.0) : parseFloat(state.aspectMode);
+          const ratio = state.aspectMode === "auto" ? clamp(imgObj.ratio || 0.718, 0.45, 2.2) : parseFloat(state.aspectMode);
           const outH = 1280, outW = Math.round(outH * ratio);
           const canvas = document.createElement("canvas");
           canvas.width = outW; canvas.height = outH;
@@ -4173,6 +4213,7 @@
             state.aspectMode = btn.dataset.ratio;
             document.querySelectorAll("#ratioGroup button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
             applyDarkroomAppearance();
+            if (mainCardImg.complete && mainCardImg.naturalWidth) analyzeArtwork(mainCardImg);
           }, { signal });
         });
 
@@ -4195,7 +4236,7 @@
 
         document.getElementById("resetBtn").addEventListener("click", () => {
           state.foilIntensity = 0.85; state.glareIntensity = 0.65; state.tiltScale = 1;
-          state.aspectMode = "0.718"; state.fit = "cover"; state.frame = "none"; state.glowMode = "auto";
+          state.aspectMode = "auto"; state.fit = "cover"; state.frame = "none"; state.glowMode = "auto";
           state.etchMode = "sunburst"; state.metalMode = "auto"; state.embossStrength = 0.75;
           state.zoneMask = true; state.starFlares = true; state.thickness = true; state.particles = true;
           state.flipped = false; state.orbiting = true;
@@ -4206,7 +4247,7 @@
           document.getElementById("embossSlider").value = "75"; document.getElementById("embossVal").textContent = "75%";
           document.querySelectorAll("#etchGroup button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.etch === "sunburst")));
           document.querySelectorAll("#metalGroup button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.metal === "auto")));
-          document.querySelectorAll("#ratioGroup button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.ratio === "0.718")));
+          document.querySelectorAll("#ratioGroup button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.ratio === "auto")));
           document.querySelectorAll("#fitGroup button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fit === "cover")));
           document.querySelectorAll("#frameGroup button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.frame === "none")));
           renderGlowSwatches();
