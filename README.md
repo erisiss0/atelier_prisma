@@ -13,8 +13,3 @@
   - 依進入來源自動對應 `← / →` 切換不同作品（3D 側滑轉場）或同一張圖的 15 款特效（光波掃描過渡），`↑ / ↓` 跨維度切換。
   - 右上角極簡自動隱藏控制列與退出門框圖示，內建多款裝裱外框（含「精密金屬包角」與「美術館雕花框」）與高解析 PNG 匯出。
 
-## 快速上架至 GitHub Pages
-
-1. 將下載的 `atelier_prisma.html` 重新命名為 `index.html`。
-2. 在本倉庫首頁點選 **Add file → Upload files**，將 `index.html` 拖入並 Commit 至 `main` 分支。
-3. 前往倉庫 **Settings → Pages**，將 **Source** 設為 `Deploy from a branch`，分支選擇 `main` / `/ (root)` 並儲存，稍候片刻即可透過 GitHub Pages 線上開啟展廳。
